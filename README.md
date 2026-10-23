@@ -42,33 +42,91 @@ CLAUDE_MANAGED_ENVIRONMENT_ID=your_environment_id
 PORT=3009
 ```
 
-## How the application was developed
+## How the app was build
 
-The browser collects inputs; the Node host validates requests; the lesson implementation produces observable evidence. The architecture page walks through the real source with numbered steps, prerequisite configuration, source filenames and code excerpts.
+### 1. Merge the history and live observation windows
 
-### Lesson implementation
+The reducer walks authored history IDs before the buffered live IDs. A Set rejects repeat delivery, and an ID is recorded only after it is added to the delivered list. This models recovery ordering; it does not open a network stream.
 
-[src/lesson.ts](https://github.com/luiscoco/Udemy-claude-managed-agents-lesson-c09-app/blob/main/src/lesson.ts)
+Source: [src/lesson.ts](src/lesson.ts#L16)
 
 ```typescript
-  async run(input) {
-
-const seen = new Set<string>(), delivered: string[] = [], trace: string[] = [];
-let duplicates = 0;
-trace.push("Open and buffer live observation before reading history");
-for (const id of [...list(input,"historyIds"), ...list(input,"liveIds")]) {
-  if (typeof id !== "string" || !id) throw new Error("Every persisted record needs an ID");
-  if (seen.has(id)) { duplicates++; continue; }
-  delivered.push(id); seen.add(id);
-}
-const preview = list(input,"previewChunks").map(String).join("");
-return report("passed","Recovered records without replaying session creation or user input",{duplicates,delivered:delivered.length,ids:delivered,preview,mutationReplays:0},[...trace,"Process previews separately from persisted identities","Deduplicate canonical records after successful handling"]);
-
+for (const id of [...list(input, "historyIds"), ...list(input, "liveIds")]) {
+  if (typeof id !== "string" || !id)
+    throw new Error("Every persisted record needs an ID");
+  if (seen.has(id)) {
+    duplicates++;
+    continue;
   }
-};
+  delivered.push(id);
+  seen.add(id);
+}
 ```
 
-Read the architecture page for the remaining source excerpts and explanations, including input handling and optional provider behavior. The diagram describes this application, rather than implying that an external integration has been implemented.
+### 2. Keep previews separate from persisted identity
+
+Preview chunks are concatenated as display text. They do not enter the persisted-ID Set, so a preview cannot suppress a canonical history record.
+
+Source: [src/lesson.ts](src/lesson.ts#L21)
+
+```typescript
+const preview = list(input, "previewChunks").map(String).join("");
+```
+
+### 3. Prove that recovery did not replay a mutation
+
+Inspect duplicates, delivered IDs and mutationReplays. The zero mutation count expresses the local recovery contract: reconstruct observations without creating another session or resending a prompt.
+
+Source: [src/lesson.ts](src/lesson.ts#L22)
+
+```typescript
+return report(
+  "passed",
+  "Recovered records without replaying session creation or user input",
+  {
+    duplicates,
+    delivered: delivered.length,
+    ids: delivered,
+    preview,
+    mutationReplays: 0,
+  },
+  [
+    ...trace,
+    "Process previews separately from persisted identities",
+    "Deduplicate canonical records after successful handling",
+  ],
+);
+```
+
+### Check your understanding
+
+Run **Recover overlapping delivery** in the application. Compare the result with these scenario expectations:
+
+```json
+{
+  "input": {
+    "historyIds": [
+      "e1",
+      "e2"
+    ],
+    "liveIds": [
+      "e2",
+      "e3"
+    ],
+    "previewChunks": [
+      "Hello",
+      " world"
+    ]
+  },
+  "expectedOutcome": "passed",
+  "checkEvidence": {
+    "duplicates": 1,
+    "delivered": 3
+  }
+}
+```
+
+Then try **Deduplicate repeated live delivery**. Its expected outcome is `passed`; identify the condition or evidence field that explains the difference.
 
 ## Validation
 
