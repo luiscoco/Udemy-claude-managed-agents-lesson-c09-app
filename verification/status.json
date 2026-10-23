@@ -1,0 +1,13 @@
+{
+  "lesson": "C09",
+  "title": "Stream Recovery without Lost Events",
+  "path": "lesson-c09\\lesson-c09-app",
+  "port": 3009,
+  "scenarios": 2,
+  "state": "implemented and verified",
+  "liveScope": "text-only commentary about the local result",
+  "typecheck": true,
+  "localTests": true,
+  "browserSmoke": "passed: desktop, mobile, scenario controls, source view",
+  "liveCommentarySmoke": "passed: real text-only session reached end_turn"
+}

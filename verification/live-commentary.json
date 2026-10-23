@@ -1,0 +1,29 @@
+{
+  "source": "live-provider-commentary",
+  "sessionId": "sesn_01SZLFPENEummF3xmkyStehR",
+  "answer": "**Stream Recovery without Lost Events** is a local experiment demonstrating that a stream consumer can buffer live incoming events before reading historical records, avoiding gaps at the seam between past and present. Previews (like short text snippets) are handled separately from canonical persisted identities, so transient data doesn't pollute the durable record. Finally, a deduplication pass consolidates any overlapping entries, resulting in exactly the expected set of delivered records with no mutation replays needed.",
+  "stopReason": "end_turn",
+  "eventTypes": [
+    "session.status_running",
+    "session.thread_status_running",
+    "user.message",
+    "span.model_request_start",
+    "agent.thinking",
+    "agent.message",
+    "span.model_request_end",
+    "session.thread_status_idle",
+    "session.usage",
+    "session.status_idle"
+  ],
+  "requestUsage": [
+    {
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "input_tokens": 604,
+      "output_tokens": 135,
+      "speed": "standard"
+    }
+  ],
+  "experimentHash": "b0fde2d4b702e7ecb4fedcba1af0352c7b6768376d28df8cd266b5ffda6d3edb",
+  "scope": "A real text-only model response about the local experiment. External integrations and the experiment's correctness are not certified by this response."
+}

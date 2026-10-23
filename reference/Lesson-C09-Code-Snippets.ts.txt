@@ -1,0 +1,50 @@
+// Lesson C09: no provider operations occur at import time.
+import Anthropic from "@anthropic-ai/sdk";
+import type { BetaManagedAgentsStreamSessionEvents as StreamEvent }
+  from "@anthropic-ai/sdk/resources/beta/sessions/events";
+
+export type Handle = (event: StreamEvent) => Promise<void>;
+
+// Await serially. seen is scoped to the session observer and contains only
+// successfully handled persisted IDs, never preview target IDs on their own.
+export function createDelivery(seen: Set<string>, handle: Handle) {
+  return async function deliver(event: StreamEvent): Promise<void> {
+    if (event.type === "event_start") {
+      if (!seen.has(event.event.id)) await handle(event);
+      return;
+    }
+    if (event.type === "event_delta") {
+      if (!seen.has(event.event_id)) await handle(event);
+      return;
+    }
+    if (event.id && seen.has(event.id)) return;
+    await handle(event);
+    if (event.id) seen.add(event.id);
+  };
+}
+
+// Client default disables automatic mutation retries. Reads opt in below.
+export function createHostClient() {
+  return new Anthropic({ maxRetries: 0 });
+}
+
+// Restores observation only; pending actions need current-state checks and
+// idempotent effect ledgers. No user.message or session creation is replayed.
+export async function recoverObservation(
+  client: Anthropic, sessionId: string, seen: Set<string>, handle: Handle,
+  signal?: AbortSignal
+) {
+  const deliver = createDelivery(seen, handle);
+  const stream = await client.beta.sessions.events.stream(
+    sessionId, { event_deltas: ["agent.message"] },
+    { maxRetries: 2, timeout: 10000, signal }
+  );
+  try {
+    for await (const event of client.beta.sessions.events.list(
+      sessionId, {}, { maxRetries: 2, timeout: 10000, signal }
+    )) await deliver(event);
+    for await (const event of stream) await deliver(event);
+  } finally {
+    stream.controller.abort(); // Closes local observation, not remote work.
+  }
+}
